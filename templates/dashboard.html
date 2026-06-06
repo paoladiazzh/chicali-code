@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Data Replicator – Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <style>
+        .log-terminal {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.8rem;
+            line-height: 1.5;
+        }
+        .log-terminal::-webkit-scrollbar { width: 6px; }
+        .log-terminal::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 3px; }
+        .log-info { color: #90cdf4; }
+        .log-success { color: #68d391; }
+        .log-error { color: #fc8181; }
+        .log-warn { color: #fbd38d; }
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .btn-action {
+            @apply px-5 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 shadow-md;
+        }
+        .btn-action:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,0.15); }
+        .btn-action:active { transform: translateY(0); }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <!-- Header -->
+    <header class="border-b border-gray-800 bg-gray-900/80 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-3 h-3 rounded-full bg-green-400 pulse" id="status-dot"></div>
+                <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                    AI Data Replicator
+                </h1>
+            </div>
+            <span class="text-xs text-gray-500">Powered by Gemini 2.5 Flash</span>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        <!-- Control Panel -->
+        <section class="flex flex-wrap gap-3">
+            <button onclick="launchBrowser()" class="btn-action bg-blue-600 hover:bg-blue-500 text-white">
+                🚀 Launch Browser
+            </button>
+            <button onclick="runObservation()" class="btn-action bg-purple-600 hover:bg-purple-500 text-white">
+                👁 Run Observation
+            </button>
+            <button onclick="runAutomation()" class="btn-action bg-green-600 hover:bg-green-500 text-white">
+                ⚡ Run Automation
+            </button>
+            <button onclick="resetLogs()" class="btn-action bg-gray-700 hover:bg-gray-600 text-gray-200">
+                🔄 Reset Logs
+            </button>
+        </section>
+
+        <!-- KPI Row -->
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <p class="text-sm text-gray-400 uppercase tracking-wide">Total Tokens Consumed</p>
+                <p class="text-3xl font-bold mt-2 text-blue-300" id="kpi-tokens">0</p>
+                <p class="text-xs text-gray-500 mt-1">
+                    In: <span id="kpi-input-tokens">0</span> | Out: <span id="kpi-output-tokens">0</span>
+                </p>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <p class="text-sm text-gray-400 uppercase tracking-wide">Estimated Cost</p>
+                <p class="text-3xl font-bold mt-2 text-green-300" id="kpi-cost">$0.000000</p>
+                <p class="text-xs text-gray-500 mt-1">
+                    <span id="kpi-calls">0</span> API calls made
+                </p>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <p class="text-sm text-gray-400 uppercase tracking-wide">Successful Mappings</p>
+                <p class="text-3xl font-bold mt-2 text-purple-300" id="kpi-mappings">0</p>
+                <p class="text-xs text-gray-500 mt-1">
+                    Accuracy: <span id="kpi-accuracy">—</span>
+                </p>
+            </div>
+        </section>
+
+        <!-- Charts -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h3 class="text-sm font-semibold text-gray-300 mb-4">Token Usage Per Call</h3>
+                <canvas id="chart-tokens" height="200"></canvas>
+            </div>
+            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h3 class="text-sm font-semibold text-gray-300 mb-4">Mapping Accuracy</h3>
+                <div class="flex items-center justify-center h-[200px]">
+                    <canvas id="chart-accuracy"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Records Table -->
+        <section class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+                <h3 class="text-sm font-semibold text-gray-300">📋 Mapping Records</h3>
+                <span class="text-xs text-gray-500" id="record-count">0 records</span>
+            </div>
+            <div class="overflow-x-auto max-h-80 overflow-y-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="text-xs uppercase text-gray-400 bg-gray-900/50 sticky top-0">
+                        <tr>
+                            <th class="px-4 py-3">#</th>
+                            <th class="px-4 py-3">Origin Field</th>
+                            <th class="px-4 py-3">Destination Selector</th>
+                            <th class="px-4 py-3">Value Filled</th>
+                            <th class="px-4 py-3">Status</th>
+                            <th class="px-4 py-3">Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody id="records-tbody" class="divide-y divide-gray-700">
+                        <tr class="text-gray-500">
+                            <td colspan="6" class="px-4 py-6 text-center">No records yet. Run an observation or automation to see results here.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Log Terminal -->
+        <section class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-3 bg-gray-850 border-b border-gray-700">
+                <h3 class="text-sm font-semibold text-gray-300">🖥 Live Agent Logs</h3>
+                <button onclick="clearTerminal()" class="text-xs text-gray-500 hover:text-gray-300">Clear</button>
+            </div>
+            <div id="log-terminal" class="log-terminal p-4 h-72 overflow-y-auto bg-gray-900/50">
+                <div class="log-info">[system] Dashboard initialized. Waiting for commands...</div>
+            </div>
+        </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
