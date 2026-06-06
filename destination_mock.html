@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Internal Order Management - System B</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f4f8;
+            padding: 40px;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            padding: 40px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 8px;
+            color: #1a365d;
+            font-size: 1.6rem;
+        }
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 32px;
+            font-size: 0.9rem;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 0.9rem;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #4299e1;
+        }
+        .form-row {
+            display: flex;
+            gap: 16px;
+        }
+        .form-row .form-group {
+            flex: 1;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background: #2b6cb0;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 12px;
+            transition: background 0.2s;
+        }
+        button:hover { background: #2c5282; }
+        .success-msg {
+            display: none;
+            text-align: center;
+            padding: 16px;
+            background: #c6f6d5;
+            color: #276749;
+            border-radius: 8px;
+            margin-top: 16px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📦 Order Ingestion Portal</h1>
+        <p class="subtitle">Internal ERP &mdash; New Record Entry</p>
+
+        <form id="order-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="buyer_first">Buyer First Name</label>
+                    <input type="text" id="buyer_first" name="buyer_first" placeholder="e.g. Jane">
+                </div>
+                <div class="form-group">
+                    <label for="buyer_last">Buyer Last Name</label>
+                    <input type="text" id="buyer_last" name="buyer_last" placeholder="e.g. Doe">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="product_ref">Product Reference Code</label>
+                <input type="text" id="product_ref" name="product_ref" placeholder="e.g. SKU-12345">
+            </div>
+
+            <div class="form-group">
+                <label for="item_title">Item Description</label>
+                <input type="text" id="item_title" name="item_title" placeholder="e.g. Sauce Labs Backpack">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="unit_cost">Unit Cost ($)</label>
+                    <input type="text" id="unit_cost" name="unit_cost" placeholder="e.g. 29.99">
+                </div>
+                <div class="form-group">
+                    <label for="order_qty">Order Quantity</label>
+                    <input type="number" id="order_qty" name="order_qty" placeholder="e.g. 1" value="1">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="delivery_addr">Delivery Address</label>
+                <textarea id="delivery_addr" name="delivery_addr" rows="2" placeholder="e.g. 123 Main St, Springfield, IL 62704"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="cart_total">Cart Total ($)</label>
+                <input type="text" id="cart_total" name="cart_total" placeholder="e.g. 32.39">
+            </div>
+
+            <button type="submit">Submit Order Record</button>
+        </form>
+
+        <div class="success-msg" id="success-msg">
+            ✅ Order record saved successfully!
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('order-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            document.getElementById('success-msg').style.display = 'block';
+            setTimeout(() => {
+                document.getElementById('success-msg').style.display = 'none';
+            }, 3000);
+        });
+    </script>
+</body>
+</html>
