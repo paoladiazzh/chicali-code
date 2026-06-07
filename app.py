@@ -22,8 +22,7 @@ import llm_engine
 
 # ─── Paths ────────────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).parent
-DEST_FILE = BASE_DIR / "destination_mock.html"
-ORIGIN_URL = "https://www.saucedemo.com/"
+DEFAULT_ORIGIN_URL = "https://www.saucedemo.com/"
 
 # ─── WebSocket Connection Manager ─────────────────────────────────────────────────
 
@@ -177,10 +176,78 @@ DEST_RECORDER_JS = """
 """
 
 
+# ─── Dynamic Destination Form Builder ─────────────────────────────────────────────
+def build_dest_html(fields: list[dict]) -> str:
+    """Generate a dynamic destination form HTML from a list of field definitions."""
+    rows = []
+    for f in fields:
+        fid = f.get("id", f.get("name", "")).replace(" ", "_").lower()
+        label = f.get("label", fid)
+        ftype = f.get("type", "text")
+        tag = f.get("tag", "input")
+        if tag == "textarea":
+            rows.append(f'<div class="form-group"><label for="{fid}">{label}</label>'
+                        f'<textarea id="{fid}" name="{fid}" rows="2" placeholder="{label}"></textarea></div>')
+        else:
+            rows.append(f'<div class="form-group"><label for="{fid}">{label}</label>'
+                        f'<input type="{ftype}" id="{fid}" name="{fid}" placeholder="{label}"></div>')
+    form_body = "\n".join(rows)
+    return f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<title>System B - Dynamic Destination</title>
+<style>
+* {{ box-sizing: border-box; margin: 0; padding: 0; }}
+body {{ font-family: 'Segoe UI', sans-serif; background: #f0f4f8; padding: 40px; color: #333; }}
+.container {{ max-width: 600px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 40px; }}
+h1 {{ text-align: center; margin-bottom: 8px; color: #1a365d; font-size: 1.6rem; }}
+.subtitle {{ text-align: center; color: #718096; margin-bottom: 32px; font-size: 0.9rem; }}
+.form-group {{ margin-bottom: 20px; }}
+label {{ display: block; margin-bottom: 6px; font-weight: 600; color: #2d3748; font-size: 0.9rem; }}
+input, textarea {{ width: 100%; padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem; }}
+input:focus, textarea:focus {{ outline: none; border-color: #4299e1; }}
+button {{ width: 100%; padding: 14px; background: #2b6cb0; color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 12px; }}
+.success-msg {{ display: none; text-align: center; padding: 16px; background: #c6f6d5; color: #276749; border-radius: 8px; margin-top: 16px; }}
+</style></head><body>
+<div class="container">
+<h1>Dynamic Destination Portal</h1>
+<p class="subtitle">System B &mdash; AI-Generated Form</p>
+<form id="order-form">
+{form_body}
+<button type="submit">Submit Record</button>
+</form>
+<div class="success-msg" id="success-msg">Record saved!</div>
+</div>
+<script>
+document.getElementById('order-form').addEventListener('submit', function(e) {{
+    e.preventDefault();
+    document.getElementById('success-msg').style.display = 'block';
+    setTimeout(() => {{ document.getElementById('success-msg').style.display = 'none'; }}, 3000);
+}});
+</script></body></html>"""
+
+
 # ─── Automation Endpoints ─────────────────────────────────────────────────────────
 @app.post("/api/launch-browser")
-async def launch_browser():
-    """Phase 1: Launch browser with two tabs."""
+async def launch_browser(request: Request):
+    """Phase 1: Launch browser with two tabs. Accepts custom origin_url."""
+    # Close existing browser if any
+    if state["browser"]:
+        try:
+            await state["browser"].close()
+        except Exception:
+            pass
+        state["browser"] = None
+        state["origin_page"] = None
+        state["dest_page"] = None
+        state["mapping"] = None
+
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        pass
+    origin_url = body.get("origin_url", DEFAULT_ORIGIN_URL)
+
     await emit_log("Launching Playwright browser...", "info")
 
     pw = await async_playwright().start()
@@ -190,11 +257,12 @@ async def launch_browser():
     origin_page = await context.new_page()
     dest_page = await context.new_page()
 
-    await emit_log("Opening Origin (saucedemo.com)...", "info")
-    await origin_page.goto(ORIGIN_URL, wait_until="domcontentloaded")
+    await emit_log(f"Opening Origin ({origin_url})...", "info")
+    await origin_page.goto(origin_url, wait_until="domcontentloaded")
 
-    dest_url = f"file://{DEST_FILE.resolve()}"
-    await emit_log("Opening Destination (Order Ingestion Portal)...", "info")
+    dest_file = BASE_DIR / "destination_mock.html"
+    dest_url = f"file://{dest_file.resolve()}"
+    await emit_log("Opening Destination (System B)...", "info")
     await dest_page.goto(dest_url, wait_until="domcontentloaded")
 
     # Inject recorders
@@ -205,8 +273,9 @@ async def launch_browser():
     state["context"] = context
     state["origin_page"] = origin_page
     state["dest_page"] = dest_page
+    state["origin_url"] = origin_url
 
-    await emit_log("Browser ready. Two tabs open with interaction recorders injected.", "success")
+    await emit_log("Browser ready. Two tabs open with recorders injected.", "success")
     return {"status": "ok", "message": "Browser launched with two tabs"}
 
 
@@ -273,25 +342,37 @@ async def automate():
 
     await emit_log("Scraping current state of origin page...", "info")
 
-    # Scrape origin page data
+    # Scrape origin page data — generic DOM extraction (works on any site)
     page_data = await origin_page.evaluate("""
     (() => {
         const data = {};
-        const textEls = document.querySelectorAll(
-            '.inventory_details_name, .inventory_details_desc, .inventory_details_price, ' +
-            '.cart_item_label, .inventory_item_name, .inventory_item_price, .inventory_item_desc, ' +
-            '.summary_value_label, .summary_subtotal_label, .summary_tax_label, .summary_total_label, ' +
-            'h3, h2, .title, [data-test]'
-        );
-        textEls.forEach(el => {
-            const key = el.className || el.getAttribute('data-test') || el.tagName;
-            const val = el.innerText?.trim();
-            if (val) data[key] = val;
+        // Grab all meaningful text elements
+        document.querySelectorAll(
+            'h1, h2, h3, h4, h5, p, span, td, th, li, label, a, strong, b, em, ' +
+            '[data-test], [data-testid], [class*="price"], [class*="name"], [class*="title"], ' +
+            '[class*="total"], [class*="cost"], [class*="amount"], [class*="item"], [class*="product"]'
+        ).forEach(el => {
+            const text = el.innerText?.trim();
+            if (text && text.length > 0 && text.length < 500) {
+                const key = el.getAttribute('data-test') || el.getAttribute('data-testid')
+                    || el.id || el.className?.split(' ')[0] || el.tagName;
+                if (!data[key]) data[key] = text;
+            }
         });
-        document.querySelectorAll('input').forEach(el => {
-            if (el.value) data[el.id || el.name || el.placeholder] = el.value;
+        // Grab input/select/textarea values
+        document.querySelectorAll('input, select, textarea').forEach(el => {
+            const key = el.id || el.name || el.getAttribute('aria-label') || el.placeholder || el.type;
+            if (el.value) data['input_' + key] = el.value;
         });
-        data['_page_text'] = document.body.innerText.substring(0, 3000);
+        // Grab table data
+        document.querySelectorAll('table').forEach((table, ti) => {
+            table.querySelectorAll('tr').forEach((row, ri) => {
+                const cells = Array.from(row.querySelectorAll('td, th')).map(c => c.innerText?.trim());
+                if (cells.length > 0) data['table' + ti + '_row' + ri] = cells.join(' | ');
+            });
+        });
+        // Full page text as fallback context
+        data['_page_text'] = document.body.innerText.substring(0, 4000);
         return data;
     })()
     """)

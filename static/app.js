@@ -204,7 +204,23 @@ function renderTable() {
 
 // ─── API Actions ─────────────────────────────────────────────────────────────────
 async function launchBrowser() {
-    await apiCall('/api/launch-browser');
+    const originUrl = document.getElementById('origin-url').value.trim();
+    if (!originUrl) {
+        appendLog('Please enter an Origin URL.', 'error');
+        return;
+    }
+    try {
+        appendLog('Calling /api/launch-browser...', 'info');
+        const res = await fetch('/api/launch-browser', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ origin_url: originUrl }),
+        });
+        const data = await res.json();
+        if (data.status === 'error') appendLog(`Error: ${data.message}`, 'error');
+    } catch (err) {
+        appendLog(`Request failed: ${err.message}`, 'error');
+    }
 }
 
 async function runObservation() {
