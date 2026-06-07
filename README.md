@@ -110,8 +110,7 @@ The agent works with **any** website. Tested with:
 |---------|----------|
 | https://saucedemo.com | E-commerce demo (login, cart, checkout) |
 | https://automationexercise.com | Registration, product search, forms |
-| https://the-internet.herokuapp.com | Forms, tables, authentication |
-| https://demo.opencart.com | Full store with admin panel |
+
 
 ## 🎯 Demo Credentials (saucedemo.com)
 - **Username:** `standard_user`
