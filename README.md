@@ -112,6 +112,3 @@ The agent works with **any** website. Tested with:
 | https://automationexercise.com | Registration, product search, forms |
 
 
-## 🎯 Demo Credentials (saucedemo.com)
-- **Username:** `standard_user`
-- **Password:** `secret_sauce`
